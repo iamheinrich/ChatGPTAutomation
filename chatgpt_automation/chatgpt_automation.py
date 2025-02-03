@@ -18,6 +18,7 @@ from chatgpt_automation.chromedriver_manager import ChromeDriverManager
 # TODO: Replace autoit with a solution that's cross-platform compatible. autoit is only used for upload_file_for_prompt
 # import autoit
 import subprocess
+from typing import List, Optional, Dict, Any
 # Configure logging
 logging.basicConfig(filename='chatgpt_automation.log', level=logging.INFO,
                     format='%(asctime)s:%(levelname)s:%(message)s')
@@ -35,15 +36,23 @@ class ChatGPTLocators:
     WEB_SEARCH_INPUT = (By.XPATH, '/html/body/div[1]/div[2]/main/div[1]/div[1]/div/div/div/div/article[1]/div/div/div/div/div/div/div/div/div[1]')
     WEB_SEARCH_OUTPUT = (By.XPATH, '/html/body/div[1]/div[2]/main/div[1]/div[1]/div/div/div/div/article[1]/div/div/div/div/div/div/div/div/div[2]')
 
-    WEB_SEARCH_BTN = (By.XPATH, '//*[@id="composer-background"]/div[2]/div[1]/div[2]/span/button')
+    # WEB_SEARCH_BTN = (By.XPATH, '/html/body/div[1]/div[2]/main/div[1]/div[1]/div/div[2]/div/div/div/div[4]/form/div/div/div/div/div[2]/div[1]/div[3]/div/span/button')
+    WEB_SEARCH_BTN = (By.CSS_SELECTOR, "#composer-background > div.mb-2.mt-1.flex.items-center.justify-between.sm\:mt-5 > div.flex.gap-x-1\.5.text-token-text-primary > div:nth-child(2) > div > span > button")
     
-    SHOW_WEB_SEARCH_SOURCES_BTN = (By.CSS_SELECTOR, 'body > div.relative.flex.h-full.w-full.overflow-hidden.transition-colors.z-0 > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > article:nth-child(3) > div > div > div.group\/conversation-turn.relative.flex.w-full.min-w-0.flex-col.agent-turn > div > div.flex.max-w-full.flex-col.flex-grow > div > div > div > div.absolute.h-\[60px\] > button > div.flex.items-center.gap-0\.5.text-sm.font-medium')
+    SHOW_WEB_SEARCH_SOURCES_BTN = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.relative.flex.h-full.w-full.flex-row.overflow-hidden > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > article:nth-child(3) > div > div > div.group\/conversation-turn.relative.flex.w-full.min-w-0.flex-col.agent-turn > div.flex-col.gap-1.md\:gap-3 > div.flex.max-w-full.flex-col.flex-grow > div > div > div > div.absolute.h-\[60px\] > button')
     
-    WEB_SEARCH_SOURCES_CITATIONS = (By.XPATH, '/html/body/div[1]/div[3]/div/div/section/div[2]/div/div[1]/div[2]')
-    WEB_SEARCH_SOURCES_MORE = (By.XPATH, '/html/body/div[1]/div[3]/div/div/section/div[2]/div/div[2]/div[2]')
+    WEB_SEARCH_SOURCES_CITATIONS = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.z-\[1\].flex-shrink-0.overflow-x-hidden.bg-token-sidebar-surface-primary.max-md\:\!w-0 > div > div > section > div:nth-child(2) > div > div:nth-child(1) > div.flex.flex-col.px-3.py-2')
+    WEB_SEARCH_SOURCES_MORE = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.z-\[1\].flex-shrink-0.overflow-x-hidden.bg-token-sidebar-surface-primary.max-md\:\!w-0 > div > div > section > div:nth-child(2) > div > div:nth-child(2) > div.flex.flex-col.px-3.py-2')
+    
+    # The button to click to come to the end of the conversation
+    WEB_SEARCH_CURSOR_POINTER = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.relative.flex.h-full.w-full.flex-row.overflow-hidden > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > button')
+    
+    # Card that shows an error message
+    ERROR_CARD = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.relative.flex.h-full.w-full.flex-row.overflow-hidden > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > article:nth-child(3) > div > div > div.group\/conversation-turn.relative.flex.w-full.min-w-0.flex-col.agent-turn > div > div.flex.max-w-full.flex-col.flex-grow > div')
     
     CHAT_GPT_CONVERSION = (By.CSS_SELECTOR, 'div.text-base')
-    CHAT_GPT_RESPONSE_WEB_SEARCH = (By.CSS_SELECTOR, 'body > div.relative.flex.h-full.w-full.overflow-hidden.transition-colors.z-0 > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > article:nth-child(3) > div > div > div.group\/conversation-turn.relative.flex.w-full.min-w-0.flex-col.agent-turn > div > div.flex.max-w-full.flex-col.flex-grow > div > div > div')
+    CHAT_GPT_RESPONSE_WEB_SEARCH = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.relative.flex.h-full.w-full.flex-row.overflow-hidden > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > article:nth-child(3) > div > div > div.group\/conversation-turn.relative.flex.w-full.min-w-0.flex-col.agent-turn > div.flex-col.gap-1.md\:gap-3 > div.flex.max-w-full.flex-col.flex-grow > div > div > div')
+    CHAT_GPT_RESPONSE_WEB_SEARCH_2 = (By.CSS_SELECTOR, 'body > div.flex.h-full.w-full.flex-col > div > div.relative.flex.h-full.w-full.flex-row.overflow-hidden > div.relative.flex.h-full.max-w-full.flex-1.flex-col.overflow-hidden > main > div.composer-parent.flex.h-full.flex-col.focus-visible\:outline-0 > div.flex-1.overflow-hidden.\@container\/thread > div > div > div > div > article:nth-child(3) > div > div > div.group\/conversation-turn.relative.flex.w-full.min-w-0.flex-col.agent-turn > div > div.flex.max-w-full.flex-col.flex-grow > div.min-h-8.text-message.flex.w-full.flex-col.items-end.gap-2.whitespace-normal.break-words.text-start.\[\.text-message\+\&\]\:mt-5 > div > div')
     REGENERATE_BTN = (By.CSS_SELECTOR, 'button[as="button"]')
 
     FIRST_DELETE_BTN = (By.CSS_SELECTOR, 'button[data-state="closed"]')
@@ -96,18 +105,18 @@ class ChatGPTLocators:
 
 class ChatGPTAutomation:
     class DelayTimes:
-        CONSTRUCTOR_DELAY = 6
-        SEND_PROMPT_DELAY = 20
-        UPLOAD_FILE_DELAY = 10
-        RETURN_LAST_RESPONSE_DELAY = 2
-        OPEN_NEW_CHAT_DELAY = 10
-        DEL_CURRENT_CHAT_OPEN_MENU_DELAY = 3
-        DEL_CURRENT_CHAT_AFTER_DELETE_DELAY = 5
-        DEL_CURRENT_CHAT_BEFORE_OPEN_NEW_CHAT_DELAY = 5
-        CHECK_RESPONSE_STATUS_DELAY = 7
-        LOGIN_USING_GMAIL_CLICK_DELAY = 6
-        GMAIL_SELECT_DELAY = 25
-        AFTER_LOGIN_CLICK_DELAY = 5
+        CONSTRUCTOR_DELAY = 4
+        SEND_PROMPT_DELAY = 12
+        UPLOAD_FILE_DELAY = 6
+        RETURN_LAST_RESPONSE_DELAY = 1
+        OPEN_NEW_CHAT_DELAY = 6
+        DEL_CURRENT_CHAT_OPEN_MENU_DELAY = 2
+        DEL_CURRENT_CHAT_AFTER_DELETE_DELAY = 3
+        DEL_CURRENT_CHAT_BEFORE_OPEN_NEW_CHAT_DELAY = 3
+        CHECK_RESPONSE_STATUS_DELAY = 4
+        LOGIN_USING_GMAIL_CLICK_DELAY = 4
+        GMAIL_SELECT_DELAY = 15
+        AFTER_LOGIN_CLICK_DELAY = 3
         ADD_GMAIL_CLICK_DELAY = 3
         GMAIL_NEXT_CLICK_DELAY = 5
         GMAIL_PASSWORD_NEXT_CLICK_DELAY = 11
@@ -162,13 +171,32 @@ class ChatGPTAutomation:
     
     def activate_web_search(self):
         """
-        Activates the web search feature in ChatGPT.
+        Activates the web search feature in ChatGPT if it's not already activated.
+        Checks the button's state to determine if web search is already active.
 
         Raises:
             WebDriverException: If there is an issue interacting with the web elements or sending the prompt.
         """
         try:
-            self.driver.find_element(*ChatGPTLocators.WEB_SEARCH_BTN).click()
+            # First check if web search button exists and is clickable
+            wait = WebDriverWait(self.driver, 3)
+            web_search_btn = wait.until(
+                EC.element_to_be_clickable(ChatGPTLocators.WEB_SEARCH_BTN)
+            )
+            
+            # Check if web search is already activated by checking the button's aria-pressed attribute
+            aria_pressed = web_search_btn.get_attribute("aria-pressed")
+            if aria_pressed == "true":
+                print("Web search is already activated")
+                return
+                
+            # Web search is not activated, proceed with activation
+            web_search_btn.click()
+            print("Web search activated")
+            
+            # Short wait for UI update
+            time.sleep(0.5)
+                
         except Exception as e:
             logging.error(f"Failed to activate web search: {e}")
             raise WebDriverException(f"Error activating web search: {e}")
@@ -181,6 +209,7 @@ class ChatGPTAutomation:
             WebDriverException: If there is an issue interacting with the web elements or sending the prompt.
         """
         try:
+            print("Attempting to click the show web search sources button")
             self.driver.find_element(*ChatGPTLocators.SHOW_WEB_SEARCH_SOURCES_BTN).click()
         except Exception as e:
             logging.error(f"Failed to show web search sources: {e}")
@@ -521,38 +550,146 @@ class ChatGPTAutomation:
         print("Chatgpt conversation returned")
         return chat_texts
     
-    def get_response_from_web_search(self):
+    def check_for_error_card(self) -> bool:
+        """
+        Checks if an error card is present in the response.
+
+        Returns:
+            bool: True if an error card is found, False otherwise
+        """
+        try:
+            self.driver.find_element(*ChatGPTLocators.ERROR_CARD)
+            print("Error card detected in response")
+            return True
+        except NoSuchElementException:
+            return False
+
+    def wait_for_response_completion(self, timeout: int = 30) -> bool:
+        """
+        Waits for the response to be complete by checking for the Sources button.
+        Adds a short delay after finding the button to ensure response is fully rendered.
+        
+        Args:
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            bool: True if response is complete, False if timeout occurred
+        """
+        try:
+            wait = WebDriverWait(self.driver, timeout)
+            
+            # Wait for sources button to appear
+            wait.until(
+                EC.presence_of_element_located(ChatGPTLocators.SHOW_WEB_SEARCH_SOURCES_BTN)
+            )
+            
+            # Add a short delay to ensure response is fully rendered
+            time.sleep(3)
+            return True
+            
+        except TimeoutException:
+            print(f"Response completion timeout after {timeout} seconds")
+            return False
+
+    def get_response_from_web_search(self) -> List[str]:
         """
         Extracts text from all nested <p> child tags under the web search response from ChatGPT.
         Handles cases where text is wrapped in other tags like <strong>.
+        For long responses, handles the cursor pointer button that appears at the bottom.
 
         Returns:
             list: A list of strings containing the combined text of all <p> tags.
+
+        Raises:
+            WebDriverException: If no response is generated from the web search or if there's an error extracting text.
+            NoSuchElementException: If neither response element is found on the page.
+            TimeoutException: If the response does not appear within the specified timeout.
         """
         try:
-            print("Attempting to locate the parent element for web search response.")
-            wait = WebDriverWait(self.driver, 10)
-            parent_element = wait.until(
-                EC.presence_of_element_located(ChatGPTLocators.CHAT_GPT_RESPONSE_WEB_SEARCH)
-            )
-            print("Parent element located successfully.")
+            print("Waiting for response to complete...")
+            if not self.wait_for_response_completion(timeout=30):
+                error_msg = "Timeout waiting for response to complete"
+                logging.error(error_msg)
+                raise TimeoutException(error_msg)
 
-            print("Finding all <p> child elements within the parent element.")
-            p_tags = parent_element.find_elements(By.TAG_NAME, "p")
-            print(f"Number of <p> tags found: {len(p_tags)}")
+            print("Response complete, extracting content...")
+            wait = WebDriverWait(self.driver, 5)
 
-            print("Extracting and cleaning text from each <p> tag.")
-            extracted_texts = [p_tag.get_attribute('textContent').strip() for p_tag in p_tags]
+            # Try to find either of the response elements
+            parent_element = None
+            try:
+                print("Locating response container...")
+                # Use a compound condition to wait for either element
+                parent_element = wait.until(
+                    lambda driver: (
+                        driver.find_element(*ChatGPTLocators.CHAT_GPT_RESPONSE_WEB_SEARCH) or 
+                        driver.find_element(*ChatGPTLocators.CHAT_GPT_RESPONSE_WEB_SEARCH_2)
+                    )
+                )
+                print("Response container found.")
+            except (TimeoutException, NoSuchElementException):
+                error_msg = "No response element was found on the page."
+                logging.error(error_msg)
+                raise NoSuchElementException(error_msg)
+
+            # After finding the parent, check for cursor pointer
+            try:
+                cursor_pointer = self.driver.find_element(*ChatGPTLocators.WEB_SEARCH_CURSOR_POINTER)
+                if cursor_pointer.is_displayed():
+                    print("Cursor pointer found, clicking to scroll to bottom")
+                    cursor_pointer.click()
+                    time.sleep(0.5)  # Short wait after click
+            except NoSuchElementException:
+                print("No cursor pointer found, proceeding with response extraction")
+
+            print("Finding all text elements within the parent element.")
+            # Look for both paragraphs and list items
+            text_elements = parent_element.find_elements(By.CSS_SELECTOR, "p, li, div.prose")
+            
+            # If no direct elements found, try to find any elements with text content
+            if not text_elements:
+                print("No direct elements found, searching all descendants for text...")
+                text_elements = parent_element.find_elements(By.XPATH, ".//*[normalize-space(text())]")
+
+            if not text_elements:
+                error_msg = "No text elements found in the web search response."
+                logging.error(error_msg)
+                raise NoSuchElementException(error_msg)
+            
+            print(f"Number of text elements found: {len(text_elements)}")
+
+            print("Extracting and cleaning text from each element.")
+            extracted_texts = []
+            for element in text_elements:
+                try:
+                    # Try text property first as it's faster
+                    text = element.text
+                    if not text:
+                        text = element.get_attribute('textContent')
+                    if text:
+                        cleaned_text = text.strip()
+                        if cleaned_text:  # Only add non-empty strings
+                            extracted_texts.append(cleaned_text)
+                except Exception as e:
+                    logging.warning(f"Failed to extract text from element: {e}")
+                    continue
+
             print(f"Extracted texts: {extracted_texts}")
+
+            if not extracted_texts:
+                error_msg = "No text content was found in the web search response."
+                logging.error(error_msg)
+                raise WebDriverException(error_msg)
 
             return extracted_texts
 
-        except TimeoutException:
-            print("Timeout while waiting for the parent element to appear.")
-            return []
+        except (TimeoutException, NoSuchElementException) as e:
+            # Re-raise these specific exceptions
+            raise
         except Exception as e:
-            print(f"Error while extracting text: {e}")
-            return []
+            error_msg = f"Error while extracting text from web search: {e}"
+            logging.error(error_msg)
+            raise WebDriverException(error_msg)
 
     def save_conversation(self, file_name, search_type="custom"):
         """
@@ -721,8 +858,8 @@ class ChatGPTAutomation:
 
     def open_new_chat(self):
         """
-        Navigates to the ChatGPT page using the WebDriver, effectively starting a new chat session. This function
-        is useful for resetting the conversation or starting afresh.
+        Navigates to the ChatGPT page using the WebDriver, effectively starting a new chat session.
+        Ensures the page is fully loaded before returning.
 
         Raises:
             WebDriverException: If there is an issue navigating to the ChatGPT page.
@@ -732,10 +869,19 @@ class ChatGPTAutomation:
             print(f"Opening URL: {self.url.rstrip('/') + '/'}")
             # Navigate to the ChatGPT URL to start a new chat session
             self.driver.get(self.url + "/")
+            
+            # Wait for the page to be fully loaded and interactive
+            wait = WebDriverWait(self.driver, 10)
+            wait.until(
+                EC.presence_of_element_located(ChatGPTLocators.MSG_BOX_INPUT3)
+            )
+            
+            # Additional wait for any animations or dynamic content
+            time.sleep(2)
+            
             # Print confirmation message
-            print("New chat opened")
-            # Wait for the page to load completely (10 seconds)
-            time.sleep(self.DelayTimes.OPEN_NEW_CHAT_DELAY)
+            print("New chat opened and ready")
+            
         except Exception as e:
             # Log the exception if navigation fails
             logging.error(f"Failed to open new chat: {e}")
@@ -955,13 +1101,13 @@ class ChatGPTAutomation:
     #     except Exception as e:
     #         logging.error(f"unexpected error: {e}")
     #         raise Exception(e)
-
+    #
     # def pass_verify(self):
     #     try:
     #         checkbox = driver.find_element(By.CSS_SELECTOR, 'input[type="checkbox"]')
     #         if not checkbox.is_selected():
     #             checkbox.click()
-
+    #
     #         time.sleep(15)
     #     except NoSuchElementException:
     #         logging.error("Check Box for human verify doesn't find!")
