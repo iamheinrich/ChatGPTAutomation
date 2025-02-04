@@ -105,21 +105,26 @@ class ChatGPTLocators:
 
 class ChatGPTAutomation:
     class DelayTimes:
-        CONSTRUCTOR_DELAY = 4
-        SEND_PROMPT_DELAY = 12
-        UPLOAD_FILE_DELAY = 6
-        RETURN_LAST_RESPONSE_DELAY = 1
-        OPEN_NEW_CHAT_DELAY = 6
-        DEL_CURRENT_CHAT_OPEN_MENU_DELAY = 2
-        DEL_CURRENT_CHAT_AFTER_DELETE_DELAY = 3
-        DEL_CURRENT_CHAT_BEFORE_OPEN_NEW_CHAT_DELAY = 3
-        CHECK_RESPONSE_STATUS_DELAY = 4
-        LOGIN_USING_GMAIL_CLICK_DELAY = 4
-        GMAIL_SELECT_DELAY = 15
-        AFTER_LOGIN_CLICK_DELAY = 3
+        # Increased general delays
+        CONSTRUCTOR_DELAY = 6
+        SEND_PROMPT_DELAY = 20
+        UPLOAD_FILE_DELAY = 10
+        RETURN_LAST_RESPONSE_DELAY = 2
+        OPEN_NEW_CHAT_DELAY = 10
+        DEL_CURRENT_CHAT_OPEN_MENU_DELAY = 3
+        DEL_CURRENT_CHAT_AFTER_DELETE_DELAY = 5
+        DEL_CURRENT_CHAT_BEFORE_OPEN_NEW_CHAT_DELAY = 5
+        CHECK_RESPONSE_STATUS_DELAY = 7
+        LOGIN_USING_GMAIL_CLICK_DELAY = 6
+        GMAIL_SELECT_DELAY = 25
+        AFTER_LOGIN_CLICK_DELAY = 5
         ADD_GMAIL_CLICK_DELAY = 3
         GMAIL_NEXT_CLICK_DELAY = 5
         GMAIL_PASSWORD_NEXT_CLICK_DELAY = 11
+        # New delays for web search
+        WEB_SEARCH_ACTIVATION_DELAY = 5
+        WEB_SEARCH_BETWEEN_RETRIES_DELAY = 10
+        TYPING_DELAY_BASE = 0.1  
 
     def __init__(self, chrome_path=None, chrome_driver_path=None, username: str = None, password: str = None, user_data_dir=None):
         """
@@ -150,7 +155,7 @@ class ChatGPTAutomation:
         self.chrome_path = chrome_path
         self.chrome_driver_path = chrome_driver_path
 
-        self.url = r"https://chatgpt.com"
+        self.url = r"https://chatgpt.com/?model=gpt-4o-mini"
         free_port = self.find_available_port()
         self.launch_chrome_with_remote_debugging(free_port, self.url)
         # self.wait_for_human_verification()
@@ -172,30 +177,43 @@ class ChatGPTAutomation:
     def activate_web_search(self):
         """
         Activates the web search feature in ChatGPT if it's not already activated.
-        Checks the button's state to determine if web search is already active.
+        Also checks if web search is temporarily disabled.
 
         Raises:
-            WebDriverException: If there is an issue interacting with the web elements or sending the prompt.
+            WebDriverException: If web search is disabled or if there is an issue interacting with the elements.
         """
         try:
-            # First check if web search button exists and is clickable
-            wait = WebDriverWait(self.driver, 3)
+            # Wait for page to be fully loaded and interactive
+            time.sleep(5)
+            
+            # First find the search button regardless of state
+            wait = WebDriverWait(self.driver, 15)
             web_search_btn = wait.until(
-                EC.element_to_be_clickable(ChatGPTLocators.WEB_SEARCH_BTN)
+                EC.presence_of_element_clickable(ChatGPTLocators.WEB_SEARCH_BTN)
             )
             
-            # Check if web search is already activated by checking the button's aria-pressed attribute
+            # Check if the button is disabled
+            is_disabled = web_search_btn.get_attribute('disabled') is not None
+            print(f"Web search button disabled state: {is_disabled}")
+
+            # Check if already activated
             aria_pressed = web_search_btn.get_attribute("aria-pressed")
             if aria_pressed == "true":
                 print("Web search is already activated")
                 return
                 
-            # Web search is not activated, proceed with activation
+            # Web search is not activated and not disabled, proceed with activation
             web_search_btn.click()
-            print("Web search activated")
+            time.sleep(3)
             
-            # Short wait for UI update
-            time.sleep(0.5)
+            # Verify activation
+            try:
+                wait.until(lambda driver: driver.find_element(*ChatGPTLocators.WEB_SEARCH_BTN).get_attribute("aria-pressed") == "true")
+                print("Web search activated successfully")
+            except TimeoutException:
+                print("Warning: Could not verify web search activation")
+            
+            time.sleep(2)
                 
         except Exception as e:
             logging.error(f"Failed to activate web search: {e}")
@@ -211,6 +229,7 @@ class ChatGPTAutomation:
         try:
             print("Attempting to click the show web search sources button")
             self.driver.find_element(*ChatGPTLocators.SHOW_WEB_SEARCH_SOURCES_BTN).click()
+            time.sleep(4)
         except Exception as e:
             logging.error(f"Failed to show web search sources: {e}")
             raise WebDriverException(f"Error showing web search sources: {e}")
@@ -254,9 +273,11 @@ class ChatGPTAutomation:
             return []
 
     def get_all_citations(self):
+        time.sleep(3)
         return self.get_links_from_sources(ChatGPTLocators.WEB_SEARCH_SOURCES_CITATIONS)
     
     def get_more_links(self):
+        time.sleep(3)
         return self.get_links_from_sources(ChatGPTLocators.WEB_SEARCH_SOURCES_MORE)
 
     def login_using_gamil(self, email: str = None):
@@ -439,33 +460,71 @@ class ChatGPTAutomation:
     def check_if_element_exists(self, locator):
         return bool(self.driver.find_elements(*locator))
 
-    def send_prompt_to_chatgpt(self, prompt):
+    def send_prompt_to_chatgpt(self, prompt, max_retries=3):
         """
         Sends a message to ChatGPT via the web interface and waits for a response. This function
         automates the process of entering a prompt into the ChatGPT input box and triggering the send action.
 
         Args:
             prompt (str): The message or prompt to be sent to ChatGPT.
+            max_retries (int): Maximum number of attempts to send the prompt.
 
         Raises:
             WebDriverException: If there is an issue interacting with the web elements or sending the prompt.
         """
 
-        try:
-            # Wait for the input box to be visible and clickable
-            input_box = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable(ChatGPTLocators.MSG_BOX_INPUT3)
-            )
-            input_box.click()
-            self.type_in_selected_area(prompt, input_box)
-            input_box.send_keys(Keys.ENTER)
-            time.sleep(self.DelayTimes.SEND_PROMPT_DELAY)
-        except (ElementNotInteractableException, TimeoutException) as e:
-            logging.error("Element not interactable or timeout occurred.")
-            raise WebDriverException(f"Error sending prompt to ChatGPT: {e}")
-        except Exception as e:
-            logging.error(f"Failed to send prompt to ChatGPT: {e}")
-            raise WebDriverException(f"Error sending prompt to ChatGPT: {e}")
+        def verify_web_search():
+            try:
+                web_search_btn = self.driver.find_element(*ChatGPTLocators.WEB_SEARCH_BTN)
+                return web_search_btn.get_attribute("aria-pressed") == "true"
+            except:
+                return False
+
+        for attempt in range(max_retries):
+            try:
+                # Verify web search is activated
+                if not verify_web_search():
+                    print(f"Web search not activated on attempt {attempt + 1}, retrying activation...")
+                    self.activate_web_search()
+                    time.sleep(5)  # Additional wait after activation
+
+                # Wait for the input box to be visible and clickable
+                input_box = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable(ChatGPTLocators.MSG_BOX_INPUT3)
+                )
+                
+                # Clear any existing text
+                input_box.clear()
+                input_box.click()
+                
+                # Type the prompt and send
+                self.type_in_selected_area(prompt, input_box)
+                time.sleep(1)  # Short wait after typing
+                input_box.send_keys(Keys.ENTER)
+                
+                # Wait to see if the prompt was sent successfully
+                time.sleep(self.DelayTimes.SEND_PROMPT_DELAY)
+                
+                # Verify that the prompt was sent by checking if the input box is empty
+                if not input_box.get_attribute("value"):
+                    print("Prompt sent successfully")
+                    return
+                else:
+                    print(f"Prompt may not have been sent on attempt {attempt + 1}, retrying...")
+                    continue
+                    
+            except (ElementNotInteractableException, TimeoutException) as e:
+                if attempt == max_retries - 1:
+                    logging.error("Element not interactable or timeout occurred after all retries")
+                    raise WebDriverException(f"Error sending prompt to ChatGPT after {max_retries} attempts: {e}")
+                print(f"Attempt {attempt + 1} failed, retrying...")
+                time.sleep(2)  # Wait before retry
+                
+            except Exception as e:
+                logging.error(f"Failed to send prompt to ChatGPT: {e}")
+                raise WebDriverException(f"Error sending prompt to ChatGPT: {e}")
+        
+        raise WebDriverException(f"Failed to send prompt after {max_retries} attempts")
 
     # TODO: Rewrite the function using a package that is not autoit. Autoit is only available on windows.
     # def upload_file_for_prompt(self, file_name, retry_count=1):
@@ -627,6 +686,7 @@ class ChatGPTAutomation:
                     )
                 )
                 print("Response container found.")
+                time.sleep(5)
             except (TimeoutException, NoSuchElementException):
                 error_msg = "No response element was found on the page."
                 logging.error(error_msg)
@@ -638,7 +698,7 @@ class ChatGPTAutomation:
                 if cursor_pointer.is_displayed():
                     print("Cursor pointer found, clicking to scroll to bottom")
                     cursor_pointer.click()
-                    time.sleep(0.5)  # Short wait after click
+                    time.sleep(3)  # Short wait after click
             except NoSuchElementException:
                 print("No cursor pointer found, proceeding with response extraction")
 
@@ -877,7 +937,7 @@ class ChatGPTAutomation:
             )
             
             # Additional wait for any animations or dynamic content
-            time.sleep(2)
+            time.sleep(6)
             
             # Print confirmation message
             print("New chat opened and ready")
@@ -1231,12 +1291,38 @@ class ChatGPTAutomation:
                         # Handle invalid input
                         print("Invalid input. Please enter 'y' or 'n'.")
 
+    @staticmethod
+    def get_random_delay(base_delay, variation_percent=20):
+        """
+        Returns a randomized delay based on the base delay with some variation.
+        
+        Args:
+            base_delay (float): The base delay time in seconds
+            variation_percent (int): The percentage of variation allowed (default 20%)
+            
+        Returns:
+            float: The randomized delay time
+        """
+        import random
+        variation = base_delay * (variation_percent / 100)
+        return base_delay + random.uniform(-variation, variation)
+
     def type_in_selected_area(self, text: str, element):
+        """
+        Types text into an element with human-like delays between characters.
+        """
+        import random
         for char in text:
             if char == "\n":
                 element.send_keys(Keys.SHIFT + Keys.ENTER)
             else:
                 element.send_keys(char)
+                # Add a small random delay between characters
+                time.sleep(random.uniform(0.05, self.DelayTimes.TYPING_DELAY_BASE))
+            
+            # Occasionally add a longer pause
+            if random.random() < 0.1:  # 10% chance
+                time.sleep(random.uniform(0.2, 0.5))
 
     def check_dialog_error(self):
         try:
